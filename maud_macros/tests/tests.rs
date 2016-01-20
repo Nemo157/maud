@@ -106,6 +106,16 @@ mod splices {
     }
 
     #[test]
+    fn ref_raw_literals() {
+        use maud::PreEscaped;
+        let a = PreEscaped("<pinkie>");
+        let mut s = String::new();
+        html!(s, $(&a)).unwrap();
+        html!(s, $(&a)).unwrap();
+        assert_eq!(s, "<pinkie><pinkie>");
+    }
+
+    #[test]
     fn blocks() {
         let mut s = String::new();
         html!(s, {

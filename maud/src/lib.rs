@@ -34,6 +34,20 @@ impl<T: fmt::Display> Render for PreEscaped<T> {
     }
 }
 
+/// Represents a type that can be rendered as HTML once.
+///
+/// Most of the time you should implement `Render` instead,
+/// which will be picked up by the blanket impl.
+pub trait RenderOnce {
+    fn render(self, &mut fmt::Write) -> fmt::Result;
+}
+
+impl<'a, T: Render + ?Sized> RenderOnce for &'a T {
+    fn render(self, w: &mut fmt::Write) -> fmt::Result {
+        Render::render(self, w)
+    }
+}
+
 /// An adapter that escapes HTML special characters.
 ///
 /// # Example
