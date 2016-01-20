@@ -116,6 +116,16 @@ mod splices {
     }
 
     #[test]
+    fn mut_ref_raw_literals() {
+        use maud::PreEscaped;
+        let mut a = PreEscaped("<pinkie>");
+        let mut s = String::new();
+        html!(s, $(&mut a)).unwrap();
+        html!(s, $(&mut a)).unwrap();
+        assert_eq!(s, "<pinkie><pinkie>");
+    }
+
+    #[test]
     fn blocks() {
         let mut s = String::new();
         html!(s, {
@@ -318,4 +328,46 @@ fn issue_23() {
     let name = "Lyra";
     let s = to_string!(p { "Hi, " $name "!" });
     assert_eq!(s, "<p>Hi, Lyra!</p>");
+}
+
+mod mut_and_once {
+    use std::fmt;
+    use maud::{ RenderOnce, RenderMut };
+
+    struct Once<'a>(&'a str);
+    struct Mut<'a>(&'a str);
+
+    impl<'a> RenderOnce for Once<'a> {
+        fn render_once(self, w: &mut fmt::Write) -> fmt::Result {
+            w.write_str(self.0)
+        }
+    }
+
+    impl<'a> RenderMut for Mut<'a> {
+        fn render_mut(&mut self, w: &mut fmt::Write) -> fmt::Result {
+            w.write_str(self.0)
+        }
+    }
+
+    #[test]
+    fn render_once() {
+        let mut s = String::new();
+        html!(s, $Once("pinkie")).unwrap();
+        assert_eq!(s, "pinkie");
+    }
+
+    #[test]
+    fn render_mut() {
+        let mut s = String::new();
+        html!(s, $Mut("pinkie")).unwrap();
+        assert_eq!(s, "pinkie");
+    }
+
+    #[test]
+    fn render_mut_ref_mut() {
+        let mut s = String::new();
+        let mut a = Mut("pinkie");
+        html!(s, $(&mut a)).unwrap();
+        assert_eq!(s, "pinkie");
+    }
 }

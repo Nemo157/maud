@@ -34,17 +34,25 @@ impl<T: fmt::Display> Render for PreEscaped<T> {
     }
 }
 
-/// Represents a type that can be rendered as HTML once.
-///
-/// Most of the time you should implement `Render` instead,
-/// which will be picked up by the blanket impl.
+/// Represents a type that can be rendered as HTML only when mutable.
+pub trait RenderMut {
+    fn render_mut(&mut self, &mut fmt::Write) -> fmt::Result;
+}
+
+/// Represents a type that can be rendered as HTML only once.
 pub trait RenderOnce {
-    fn render(self, &mut fmt::Write) -> fmt::Result;
+    fn render_once(self, &mut fmt::Write) -> fmt::Result;
 }
 
 impl<'a, T: Render + ?Sized> RenderOnce for &'a T {
-    fn render(self, w: &mut fmt::Write) -> fmt::Result {
+    fn render_once(self, w: &mut fmt::Write) -> fmt::Result {
         Render::render(self, w)
+    }
+}
+
+impl<'a, T: RenderMut + ?Sized> RenderOnce for &'a mut T {
+    fn render_once(self, w: &mut fmt::Write) -> fmt::Result {
+        RenderMut::render_mut(self, w)
     }
 }
 

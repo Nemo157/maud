@@ -120,7 +120,7 @@ impl<'cx> Renderer<'cx> {
         let w = self.writer;
         let expr = quote_expr!(self.cx, {
           use ::maud::RenderOnce;
-          $expr.render(&mut *$w)
+          $expr.render_once(&mut *$w)
         });
         let stmt = self.wrap_try(expr);
         self.push(stmt);
