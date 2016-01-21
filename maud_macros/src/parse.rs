@@ -1,5 +1,5 @@
 use std::mem;
-use syntax::ast::{Expr, ExprParen, Lit, Stmt, TokenTree};
+use syntax::ast::{Expr, ExprParen, Lit, Stmt, TokenTree, SequenceRepetition};
 use syntax::ext::quote::rt::ToTokens;
 use syntax::codemap::Span;
 use syntax::errors::{DiagnosticBuilder, FatalError};
@@ -58,6 +58,12 @@ macro_rules! ident {
 }
 macro_rules! substnt {
     ($sp:pat, $x:pat) => (TokenTree::Token($sp, Token::SubstNt($x, IdentStyle::Plain)))
+}
+macro_rules! sequence {
+    ($sp:pat, $rc:pat) => (TokenTree::Sequence($sp, $rc))
+}
+macro_rules! rep {
+    ($tts:pat) => (SequenceRepetition { tts: $tts, .. })
 }
 macro_rules! keyword {
     ($sp:pat, $x:ident) => (TokenTree::Token($sp, ref $x @ Token::Ident(..)))
@@ -177,6 +183,12 @@ impl<'cx, 'i> Parser<'cx, 'i> {
                 // See <https://github.com/lfairy/maud/issues/23>
                 let prefix = TokenTree::Token(sp, Token::Ident(ident, IdentStyle::Plain));
                 let expr = try!(self.splice_with_prefix(prefix));
+                self.render.splice(expr);
+            },
+            [sequence!(_, ref rc), ..] => {
+                self.shift(1);
+                let &rep!(ref tt) = &**rc;
+                let expr = try!(self.with_rust_parser(tt.clone(), RustParser::parse_expr));
                 self.render.splice(expr);
             },
             // Element
