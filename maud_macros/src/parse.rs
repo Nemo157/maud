@@ -23,9 +23,6 @@ macro_rules! parse_error {
     ($self_:expr, $sp:expr, $msg:expr) => (error!($self_.render.cx, $sp, $msg))
 }
 
-macro_rules! dollar {
-    () => (TokenTree::Token(_, Token::Dollar))
-}
 macro_rules! pound {
     () => (TokenTree::Token(_, Token::Pound))
 }
@@ -166,17 +163,14 @@ impl<'cx, 'i> Parser<'cx, 'i> {
                 self.render.emit_call(func);
             },
             // Splice
-            [ref tt @ dollar!(), ..] => {
-                self.shift(1);
-                let expr = try!(self.splice(tt.get_span()));
+            [pound!(), ref d @ TokenTree::Delimited(_, _), ..] => {
+                self.shift(2);
+                let expr = try!(self.with_rust_parser(vec![d.clone()], RustParser::parse_expr));
                 self.render.splice(expr);
             },
-            [substnt!(sp, ident), ..] => {
+            [ref tt @ pound!(), ..] => {
                 self.shift(1);
-                // Parse `SubstNt` as `[Dollar, Ident]`
-                // See <https://github.com/lfairy/maud/issues/23>
-                let prefix = TokenTree::Token(sp, Token::Ident(ident, IdentStyle::Plain));
-                let expr = try!(self.splice_with_prefix(prefix));
+                let expr = try!(self.splice(tt.get_span()));
                 self.render.splice(expr);
             },
             // Element
@@ -199,6 +193,7 @@ impl<'cx, 'i> Parser<'cx, 'i> {
             // ???
             _ => {
                 if let [ref tt, ..] = self.input {
+                    println!("{:?}", tt);
                     parse_error!(self, tt.get_span(), "invalid syntax");
                 } else {
                     parse_error!(self, self.span, "unexpected end of block");
@@ -302,9 +297,9 @@ impl<'cx, 'i> Parser<'cx, 'i> {
         Ok(())
     }
 
-    /// Parses and renders a `$splice`.
+    /// Parses and renders a `#splice`.
     ///
-    /// The leading `$` should already be consumed.
+    /// The leading `#` should already be consumed.
     fn splice(&mut self, sp: Span) -> PResult<P<Expr>> {
         // First, munch a single token tree
         let prefix = match self.input {
@@ -317,12 +312,12 @@ impl<'cx, 'i> Parser<'cx, 'i> {
         self.splice_with_prefix(prefix)
     }
 
-    /// Parses and renders a `$splice`, given a prefix that we've already
+    /// Parses and renders a `#splice`, given a prefix that we've already
     /// consumed.
     fn splice_with_prefix(&mut self, prefix: TokenTree) -> PResult<P<Expr>> {
         let mut tts = vec![prefix];
         loop { match self.input {
-            // Munch attribute lookups e.g. `$person.address.street`
+            // Munch attribute lookups e.g. `#person.address.street`
             [ref dot @ dot!(), ref ident @ ident!(_, _), ..] => {
                 self.shift(2);
                 tts.push(dot.clone());
